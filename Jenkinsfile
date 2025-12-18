@@ -27,10 +27,12 @@ pipeline {
     stage('Sonar Analysis') {
       steps {
         withSonarQubeEnv('SonarQube') {
-          withCredentials([string(credentialsId: 'sonarqube-token', variable: 'sonarqube-token')]) {
+          withCredentials([
+            string(credentialsId: 'sonarqube-token', variable: 'TOKEN_SONAR')
+          ]) {
             sh '''
               mvn -B sonar:sonar \
-                -Dsonar.token=$sonarqube-token \
+                -Dsonar.token=$TOKEN_SONAR \
                 -Dsonar.projectKey=enterprise-ci-java-service \
                 -Dsonar.projectName=enterprise-ci-java-service
             '''
