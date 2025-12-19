@@ -13,7 +13,7 @@ pipeline {
         
         // --- DEPLOYMENT VARIABLES ---
         TARGET_EC2_IP = "51.20.135.39" 
-        SSH_CRED_ID   = "ec2-ssh-key"     // Updated to match your actual Jenkins Credential ID
+        SSH_CRED_ID   = "ec2-ssh-key" 
         APP_DIR       = "/var/www/myapp"
         
         NEXUS_USER  = credentials('nexus-creds')
@@ -22,9 +22,7 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            steps {
-                checkout scm
-            }
+            steps { checkout scm }
         }
 
         stage('Build & Package') {
@@ -40,11 +38,7 @@ pipeline {
                 configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
                     withSonarQubeEnv('SonarQube') {
                         withCredentials([string(credentialsId: 'sonarqube-token', variable: 'TOKEN_SONAR')]) {
-                            sh """
-                                mvn -B -s $MAVEN_SETTINGS sonar:sonar \
-                                  -Dsonar.projectKey=${PROJECT_KEY} \
-                                  -Dsonar.token=$TOKEN_SONAR
-                            """
+                            sh "mvn -B -s $MAVEN_SETTINGS sonar:sonar -Dsonar.projectKey=${PROJECT_KEY} -Dsonar.token=$TOKEN_SONAR"
                         }
                     }
                 }
@@ -62,11 +56,7 @@ pipeline {
         stage('Upload Artifact to Nexus') {
             steps {
                 configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
-                    sh """
-                        mvn -B deploy -DskipTests \
-                          -s $MAVEN_SETTINGS \
-                          -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO}
-                    """
+                    sh "mvn -B deploy -DskipTests -s $MAVEN_SETTINGS -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO}"
                 }
             }
         }
@@ -75,16 +65,16 @@ pipeline {
             steps {
                 sshagent([env.SSH_CRED_ID]) {
                     sh """
-                        # 1. Clean and Copy (These are definitely working)
+                        # 1. Clean and Copy
                         ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Start Application with a 'Force Success' wrapper
-                        # The '|| true' at the end of the SSH command tells Jenkins the stage is successful 
-                        # even if the SSH connection resets during the background process handover.
-                        ssh -n -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 &'" || true
+                        # 2. Start Application with "Fire and Forget" logic
+                        # '-f' tells SSH to go into background after authentication
+                        # 'disown' ensures the process doesn't die when the shell exits
+                        ssh -f -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 & disown'"
                         
-                        echo "Deployment commands executed successfully."
+                        echo "Deployment successful!"
                     """
                 }
             }
