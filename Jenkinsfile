@@ -71,20 +71,20 @@ pipeline {
             }
         }
 
-        stage('Deploy to Ubuntu EC2') {
+       stage('Deploy to Ubuntu EC2') {
             steps {
                 sshagent([env.SSH_CRED_ID]) {
                     sh """
-                        # 1. Clean and Copy (Confirmed working)
+                        # 1. Clean and Copy
                         ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Start Application with Background Force
-                        # -f: Requests ssh to go to background just before command execution.
-                        # This prevents the 'Exit 255' error in Jenkins.
-                        ssh -f -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup /usr/bin/java -jar app.jar > app.log 2>&1 &'"
+                        # 2. Start Application with "Double Detach"
+                        # We use 'bash -c' and 'disown' to ensure the process is orphaned from the SSH session.
+                        # We also use absolute paths for everything to be safe.
+                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "bash -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup /usr/bin/java -jar app.jar > ${APP_DIR}/app.log 2>&1 & disown'"
                         
-                        echo "Deployment command sent successfully."
+                        echo "Deployment successful. The application is starting in the background."
                     """
                 }
             }
