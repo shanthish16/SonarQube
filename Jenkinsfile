@@ -75,21 +75,16 @@ pipeline {
             steps {
                 sshagent([env.SSH_CRED_ID]) {
                     sh """
-                        # 1. Clean and Copy
+                        # 1. Clean and Copy (Confirmed working)
                         ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Start Application
-                        # We use /usr/bin/java and wrap in ( ) & to fully detach the process
-                        # The 'sleep' gives the process a second to write the log file before SSH closes
-                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "
-                            pkill -f app.jar || true
-                            cd ${APP_DIR}
-                            (nohup /usr/bin/java -jar app.jar > app.log 2>&1 &)
-                            sleep 2
-                        "
+                        # 2. Start Application with Background Force
+                        # -f: Requests ssh to go to background just before command execution.
+                        # This prevents the 'Exit 255' error in Jenkins.
+                        ssh -f -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup /usr/bin/java -jar app.jar > app.log 2>&1 &'"
                         
-                        echo "Deployment command completed successfully."
+                        echo "Deployment command sent successfully."
                     """
                 }
             }
