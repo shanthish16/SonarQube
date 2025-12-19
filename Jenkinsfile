@@ -74,27 +74,22 @@ pipeline {
 
         stage('Deploy to Ubuntu EC2') {
             steps {
-                // Ensure 'ssh-agent' plugin is installed in Jenkins
-                sshagent([env.SSH_CRED_ID]) {
-                    sh """
-                        # 1. Remove old jar files on target
-                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
+            sshagent([env.SSH_CRED_ID]) {
+            sh """
+                # 1. Clean and Copy (These worked in your log, keeping them same)
+                ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
+                scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Copy the newly built jar from the 'target' folder to EC2
-                        # Adjust 'target/*.jar' if your jar name is specific
-                        scp -o StrictHostKeyChecking=no target/*.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
-
-                        # 3. Restart the application
-                        # We use 'nohup' so the app keeps running after Jenkins disconnects
-                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "
-                            pkill -f 'app.jar' || true
-                            cd ${APP_DIR}
-                            nohup java -jar app.jar > /dev/null 2>&1 &
-                        "
-                    """
-                }
-            }
+                # 2. Refined Restart Command
+                # We combine commands with && and use a slightly better nohup syntax
+                ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 &"
+                
+                # 3. Add a small sleep to ensure the process starts before Jenkins disconnects
+                sleep 2
+            """
         }
+    }
+}
     }
 
     post {
@@ -103,3 +98,4 @@ pipeline {
         }
     }
 }
+
