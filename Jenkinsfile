@@ -11,11 +11,10 @@ pipeline {
         NEXUS_URL   = "http://13.60.195.8:8081"
         NEXUS_REPO  = "maven-snapshots"
         
-        // --- NEW DEPLOYMENT VARIABLES ---
-        TARGET_EC2_IP = "51.20.135.39" // <--- Change this to your Target EC2 IP
-        SSH_CRED_ID   = "ec2-ssh-key"                // <--- Must match the ID in Jenkins Credentials
+        // --- DEPLOYMENT VARIABLES ---
+        TARGET_EC2_IP = "51.20.135.39" 
+        SSH_CRED_ID   = "ec2-user"        // Matches the ID from your logs
         APP_DIR       = "/var/www/myapp"
-        // --------------------------------
         
         NEXUS_USER  = credentials('nexus-creds')
         NEXUS_PASS  = credentials('nexus-creds')
@@ -74,22 +73,24 @@ pipeline {
 
         stage('Deploy to Ubuntu EC2') {
             steps {
-            sshagent([env.SSH_CRED_ID]) {
-            sh """
-                # 1. Clean and Copy (These worked in your log, keeping them same)
-                ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
-                scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
+                sshagent([env.SSH_CRED_ID]) {
+                    sh """
+                        # 1. Clear old artifacts
+                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
+                        
+                        # 2. Copy the new JAR
+                        scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                # 2. Refined Restart Command
-                # We combine commands with && and use a slightly better nohup syntax
-                ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 &"
-                
-                # 3. Add a small sleep to ensure the process starts before Jenkins disconnects
-                sleep 2
-            """
+                        # 3. Start Application
+                        # -n redirects stdin to /dev/null to prevent SSH from hanging
+                        # sh -c ensures the nohup command is executed in a fresh shell
+                        ssh -n -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 &'"
+                        
+                        echo "Deployment successful on ${TARGET_EC2_IP}"
+                    """
+                }
+            }
         }
-    }
-}
     }
 
     post {
@@ -98,4 +99,3 @@ pipeline {
         }
     }
 }
-
