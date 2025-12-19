@@ -69,12 +69,11 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Start Application with "Fire and Forget" logic
-                        # '-f' tells SSH to go into background after authentication
-                        # 'disown' ensures the process doesn't die when the shell exits
-                        ssh -f -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 & disown'"
+                        # 2. Start Application
+                        # We use 'bash -c' to ensure the environment is correct and 'disown' to detach it
+                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "bash -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > app.log 2>&1 & disown'"
                         
-                        echo "Deployment successful!"
+                        echo "Deployment command sent to ${TARGET_EC2_IP}"
                     """
                 }
             }
