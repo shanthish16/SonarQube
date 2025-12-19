@@ -20,7 +20,28 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <!-- Dependencies (default from archetype) -->
+    <!-- Dependency download from Nexus -->
+    <repositories>
+        <repository>
+            <id>maven-public</id>
+            <url>http://<NEXUS_HOST>:8081/repository/maven-public/</url>
+        </repository>
+    </repositories>
+
+    <!-- Deployment configuration -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <url>http://<NEXUS_HOST>:8081/repository/maven-snapshots/</url>
+        </snapshotRepository>
+
+        <repository>
+            <id>nexus-releases</id>
+            <url>http://<NEXUS_HOST>:8081/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
+
+    <!-- Dependencies -->
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -34,7 +55,7 @@
     <build>
         <plugins>
 
-            <!-- Compiler plugin (uses Java 17) -->
+            <!-- Compiler plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -45,7 +66,7 @@
                 </configuration>
             </plugin>
 
-            <!-- JAR plugin (adds Main-Class to manifest) -->
+            <!-- JAR plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
