@@ -12,7 +12,7 @@ pipeline {
         NEXUS_REPO  = "maven-snapshots"
         
         // --- NEW DEPLOYMENT VARIABLES ---
-        TARGET_EC2_IP = "YOUR_TARGET_EC2_PUBLIC_IP" // <--- Change this to your Target EC2 IP
+        TARGET_EC2_IP = "51.20.135.39" // <--- Change this to your Target EC2 IP
         SSH_CRED_ID   = "ec2-ssh-key"                // <--- Must match the ID in Jenkins Credentials
         APP_DIR       = "/var/www/myapp"
         // --------------------------------
