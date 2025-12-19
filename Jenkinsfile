@@ -13,7 +13,7 @@ pipeline {
         
         // --- DEPLOYMENT VARIABLES ---
         TARGET_EC2_IP = "51.20.135.39" 
-        SSH_CRED_ID   = "ec2-user"        // Matches the ID from your logs
+        SSH_CRED_ID   = "ec2-ssh-key"     // Updated to match your actual Jenkins Credential ID
         APP_DIR       = "/var/www/myapp"
         
         NEXUS_USER  = credentials('nexus-creds')
@@ -82,11 +82,10 @@ pipeline {
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
                         # 3. Start Application
-                        # -n redirects stdin to /dev/null to prevent SSH from hanging
-                        # sh -c ensures the nohup command is executed in a fresh shell
+                        # -n avoids hanging; sh -c runs the background process properly
                         ssh -n -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "sh -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup java -jar app.jar > /home/ubuntu/app.log 2>&1 &'"
                         
-                        echo "Deployment successful on ${TARGET_EC2_IP}"
+                        echo "Deployment command sent successfully to ${TARGET_EC2_IP}"
                     """
                 }
             }
