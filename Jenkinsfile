@@ -75,16 +75,16 @@ pipeline {
             steps {
                 sshagent([env.SSH_CRED_ID]) {
                     sh """
-                        # 1. Clean and Copy
+                        # 1. Clean and Copy (Confirmed working)
                         ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "rm -rf ${APP_DIR}/*.jar"
                         scp -o StrictHostKeyChecking=no target/enterprise-ci-java-service-1.0-SNAPSHOT.jar ubuntu@${TARGET_EC2_IP}:${APP_DIR}/app.jar
 
-                        # 2. Start Application with "Double Detach"
-                        # We use 'bash -c' and 'disown' to ensure the process is orphaned from the SSH session.
-                        # We also use absolute paths for everything to be safe.
-                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "bash -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup /usr/bin/java -jar app.jar > ${APP_DIR}/app.log 2>&1 & disown'"
+                        # 2. Start Application with the 'Background Force' flag (-f)
+                        # -f tells SSH to drop into the background immediately after sending the command.
+                        # -n prevents reading from stdin.
+                        ssh -f -n -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "bash -c 'pkill -f app.jar || true; cd ${APP_DIR} && nohup /usr/bin/java -jar app.jar > ${APP_DIR}/app.log 2>&1 &'"
                         
-                        echo "Deployment successful. The application is starting in the background."
+                        echo "Deployment command sent successfully. Jenkins session closing."
                     """
                 }
             }
