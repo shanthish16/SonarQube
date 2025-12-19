@@ -11,7 +11,7 @@ pipeline {
     NEXUS_URL   = "http://13.60.64.127:8081"
     NEXUS_REPO  = "maven-snapshots"
     
-    // Corrected credential ID from your screenshot
+    // Updated based on your Credentials screenshot
     NEXUS_USER  = credentials('nexus-creds')
     NEXUS_PASS  = credentials('nexus-creds')
   }
@@ -25,7 +25,8 @@ pipeline {
 
     stage('Build & Package') {
       steps {
-        configFileProvider([configFile(fileId: 'MySettings', variable: 'MAVEN_SETTINGS')]) {
+        // Changed ID to 'nexus settings' to match your Managed Files
+        configFileProvider([configFile(fileId: 'nexus settings', variable: 'MAVEN_SETTINGS')]) {
           sh 'mvn -B -s $MAVEN_SETTINGS clean package -DskipTests'
         }
       }
@@ -33,8 +34,9 @@ pipeline {
 
     stage('Sonar Analysis') {
       steps {
-        configFileProvider([configFile(fileId: 'MySettings', variable: 'MAVEN_SETTINGS')]) {
+        configFileProvider([configFile(fileId: 'nexus settings', variable: 'MAVEN_SETTINGS')]) {
           withSonarQubeEnv('SonarQube') {
+            // Matches 'sonarqube-token' ID
             withCredentials([string(credentialsId: 'sonarqube-token', variable: 'TOKEN_SONAR')]) {
               sh """
                 mvn -B -s $MAVEN_SETTINGS sonar:sonar \
@@ -57,7 +59,7 @@ pipeline {
 
     stage('Upload Artifact to Nexus') {
       steps {
-        configFileProvider([configFile(fileId: 'MySettings', variable: 'MAVEN_SETTINGS')]) {
+        configFileProvider([configFile(fileId: 'nexus settings', variable: 'MAVEN_SETTINGS')]) {
           sh """
             mvn -B deploy -DskipTests \
               -s $MAVEN_SETTINGS \
