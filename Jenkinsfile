@@ -12,8 +12,7 @@ pipeline {
         NEXUS_URL  = "http://13.53.146.216:30081"
         NEXUS_REPO = "maven-snapshots"
 
-        NEXUS_USER = credentials('nexus-creds')
-        NEXUS_PASS = credentials('nexus-creds')
+        NEXUS_CREDS = credentials('nexus-creds-new')
     }
 
     stages {
