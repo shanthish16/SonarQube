@@ -9,7 +9,7 @@ pipeline {
     environment {
         PROJECT_KEY = "enterprise-ci-java-service"
 
-        NEXUS_URL  = "http://13.53.146.216:30081"
+        NEXUS_URL  = "http://13.51.241.14:30081"
         NEXUS_REPO = "maven-snapshots"
     }
 
