@@ -56,7 +56,7 @@ pipeline {
         stage('Upload Artifact to Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-creds-new',
+                    credentialsId: 'nexus-creds-v3',   // ✅ UPDATED
                     usernameVariable: 'NEXUS_USER',
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
@@ -71,6 +71,18 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Build, SonarQube analysis, and Nexus upload completed successfully."
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs for details."
+        }
+        always {
+            echo "Pipeline execution finished."
         }
     }
 }
