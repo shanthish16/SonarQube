@@ -1,24 +1,25 @@
-# --- Stage 1: Fetch the artifact ---
+# --- STAGE 1: Fetch from Nexus ---
 FROM alpine:latest AS fetcher
 
-# Set Nexus variables (these can be passed as --build-arg)
+# These are filled by the --build-arg flags in your Jenkinsfile
 ARG NEXUS_USER
 ARG NEXUS_PASS
-ARG ARTIFACT_URL="http://13.51.241.14:30081/repository/maven-snapshots/com/enterprise/ci/enterprise-ci-java-service/1.0-SNAPSHOT/enterprise-ci-java-service-1.0-SNAPSHOT.jar"
+ARG NEXUS_URL
+
+# Path based on your Nexus screenshot
+ARG JAR_PATH="com/enterprise/ci/enterprise-ci-java-service/1.0-SNAPSHOT/enterprise-ci-java-service-1.0-SNAPSHOT.jar"
 
 RUN apk add --no-cache curl
 
-# Download the JAR from Nexus using credentials
-RUN curl -u ${NEXUS_USER}:${NEXUS_PASS} -L ${ARTIFACT_URL} -o /tmp/app.jar
+# We use the variable ${NEXUS_URL} so it always matches your Jenkinsfile
+RUN curl -u ${NEXUS_USER}:${NEXUS_PASS} \
+    -L "${NEXUS_URL}/repository/maven-snapshots/${JAR_PATH}" \
+    -o /tmp/app.jar
 
-# --- Stage 2: Tiny Runtime Image ---
+# --- STAGE 2: Lightweight Runtime ---
 FROM amazoncorretto:17-alpine
-
 WORKDIR /app
-
-# Copy ONLY the jar from the fetcher stage
+# Only the JAR survives this stage, making the image tiny
 COPY --from=fetcher /tmp/app.jar app.jar
-
 EXPOSE 8080
-
 ENTRYPOINT ["java", "-jar", "app.jar"]
