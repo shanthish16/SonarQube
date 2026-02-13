@@ -73,6 +73,23 @@ pipeline {
             }
         }
     }
+    stage('Build Docker Image') {
+            steps {
+                // Reuse your existing Nexus credentials
+                withCredentials([usernamePassword(credentialsId: 'nexus-creds-v3', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    script {
+                        echo "Building lightweight Docker image..."
+                        sh """
+                            docker build \
+                            --build-arg NEXUS_USER=${USER} \
+                            --build-arg NEXUS_PASS=${PASS} \
+                            --build-arg NEXUS_URL=${NEXUS_URL} \
+                            -t ${PROJECT_KEY}:latest .
+                        """
+                    }
+                }
+            }
+        }
 
     post {
         success {
