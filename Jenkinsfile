@@ -8,13 +8,11 @@ pipeline {
 
     environment {
         PROJECT_KEY = "enterprise-ci-java-service"
-
-        NEXUS_URL  = "http://13.51.241.14:30081"
-        NEXUS_REPO = "maven-snapshots"
+        NEXUS_URL   = "http://13.51.241.14:30081"
+        NEXUS_REPO  = "maven-snapshots"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -55,14 +53,8 @@ pipeline {
 
         stage('Upload Artifact to Nexus') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-creds-v3',   // ✅ UPDATED
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
-
+                withCredentials([usernamePassword(credentialsId: 'nexus-creds-v3', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
-
                         sh """
                             mvn -B deploy -DskipTests \
                             -s $MAVEN_SETTINGS \
@@ -72,13 +64,13 @@ pipeline {
                 }
             }
         }
-    }
-    stage('Build Docker Image') {
+
+        // --- THIS STAGE IS NOW INSIDE THE 'STAGES' BLOCK ---
+        stage('Build Docker Image') {
             steps {
-                // Reuse your existing Nexus credentials
                 withCredentials([usernamePassword(credentialsId: 'nexus-creds-v3', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     script {
-                        echo "Building lightweight Docker image..."
+                        echo "Building lightweight Docker image using Multi-stage build..."
                         sh """
                             docker build \
                             --build-arg NEXUS_USER=${USER} \
@@ -90,16 +82,14 @@ pipeline {
                 }
             }
         }
+    } // <-- Parent stages block ends here
 
     post {
         success {
-            echo "✅ Build, SonarQube analysis, and Nexus upload completed successfully."
+            echo "✅ Build, Sonar, Nexus, and Docker Image build completed!"
         }
         failure {
             echo "❌ Pipeline failed. Check logs for details."
-        }
-        always {
-            echo "Pipeline execution finished."
         }
     }
 }
