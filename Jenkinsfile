@@ -8,17 +8,25 @@ pipeline {
 
     environment {
         PROJECT_KEY = "enterprise-ci-java-service"
+
         NEXUS_URL   = "http://13.62.19.235:30081"
         NEXUS_REPO  = "maven-snapshots"
+
+        AWS_REGION      = "eu-north-1"
+        AWS_ACCOUNT_ID  = "220309168382"
+        ECR_REPO        = "enterprise-ci-java-service"
     }
 
     stages {
+
+        // ================= CHECKOUT =================
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        // ================= BUILD =================
         stage('Build & Package') {
             steps {
                 configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
@@ -27,6 +35,7 @@ pipeline {
             }
         }
 
+        // ================= SONAR =================
         stage('Sonar Analysis') {
             steps {
                 configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
@@ -43,6 +52,7 @@ pipeline {
             }
         }
 
+        // ================= QUALITY GATE =================
         stage('Quality Gate') {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
@@ -51,10 +61,17 @@ pipeline {
             }
         }
 
+        // ================= UPLOAD TO NEXUS =================
         stage('Upload Artifact to Nexus') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'nexus-creds-v3', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                withCredentials([usernamePassword(
+                        credentialsId: 'nexus-creds-v3',
+                        usernameVariable: 'NEXUS_USER',
+                        passwordVariable: 'NEXUS_PASS'
+                )]) {
+
                     configFileProvider([configFile(fileId: 'nexus-settings', variable: 'MAVEN_SETTINGS')]) {
+
                         sh """
                             mvn -B deploy -DskipTests \
                             -s $MAVEN_SETTINGS \
@@ -65,12 +82,16 @@ pipeline {
             }
         }
 
-        // --- THIS STAGE IS NOW INSIDE THE 'STAGES' BLOCK ---
+        // ================= BUILD DOCKER =================
         stage('Build Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'nexus-creds-v3', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                withCredentials([usernamePassword(
+                        credentialsId: 'nexus-creds-v3',
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                )]) {
+
                     script {
-                        echo "Building lightweight Docker image using Multi-stage build..."
                         sh """
                             docker build \
                             --build-arg NEXUS_USER=${USER} \
@@ -82,14 +103,45 @@ pipeline {
                 }
             }
         }
-    } // <-- Parent stages block ends here
 
+        // ================= PUSH TO ECR =================
+        stage('Push Docker Image to ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-ecr-creds'
+                ]]) {
+
+                    script {
+
+                        def ecrUri = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+
+                        sh """
+                            echo "Logging into AWS ECR..."
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+                            echo "Tagging Docker Image..."
+                            docker tag ${PROJECT_KEY}:latest ${ecrUri}:latest
+                            docker tag ${PROJECT_KEY}:latest ${ecrUri}:${BUILD_NUMBER}
+
+                            echo "Pushing Docker Images..."
+                            docker push ${ecrUri}:latest
+                            docker push ${ecrUri}:${BUILD_NUMBER}
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    // ================= POST =================
     post {
         success {
-            echo "✅ Build, Sonar, Nexus, and Docker Image build completed!"
+            echo "✅ Full CI/CD Pipeline Completed Successfully!"
         }
         failure {
-            echo "❌ Pipeline failed. Check logs for details."
+            echo "❌ Pipeline Failed! Check logs."
         }
     }
 }
