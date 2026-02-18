@@ -9,7 +9,7 @@ pipeline {
     environment {
         PROJECT_KEY = "enterprise-ci-java-service"
 
-        NEXUS_URL   = "http://16.170.234.113:30081"
+        NEXUS_URL   = "http://16.171.31.137:30081"
         NEXUS_REPO  = "maven-snapshots"
 
         AWS_REGION      = "eu-north-1"
