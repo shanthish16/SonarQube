@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    environment {
+        // --- DOCKER CONFIG ---
+        DOCKER_IMAGE   = "your-docker-username/enterprise-app"
+        DOCKER_TAG     = "${env.BUILD_NUMBER}"
+        DOCKER_CREDS   = "docker-hub-credentials-id" // The ID from Jenkins Credentials provider
+
+        // --- DEPLOYMENT CONFIG ---
+        TARGET_EC2_IP  = "51.20.135.39"
+        SSH_CRED_ID    = "ec2-ssh-key"
+        APP_NAME       = "java-service-container"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    // Login, Build, and Push
+                    docker.withRegistry('', DOCKER_CREDS) {
+                        def customImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        customImage.push()
+                        customImage.push("latest") 
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent([SSH_CRED_ID]) {
+                    sh """
+                        # 1. Login to Docker on the remote EC2 (if needed)
+                        # 2. Stop and remove existing container to avoid port conflicts
+                        # 3. Pull the latest image and run it
+                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_EC2_IP} "
+                            docker pull ${DOCKER_IMAGE}:latest
+                            docker stop ${APP_NAME} || true
+                            docker rm ${APP_NAME} || true
+                            docker run -d --name ${APP_NAME} -p 8080:8080 ${DOCKER_IMAGE}:latest
+                        "
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Successfully deployed version ${DOCKER_TAG}"
+        }
+        failure {
+            echo "Deployment failed. Check Jenkins logs."
+        }
+    }
+}
