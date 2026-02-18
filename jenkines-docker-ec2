@@ -2,12 +2,10 @@ pipeline {
     agent any
 
     environment {
-        // --- DOCKER CONFIG ---
+       
         IMAGE_NAME   = "shanthishda/jenkins-custom" 
         IMAGE_TAG     = "${env.BUILD_NUMBER}"
         DOCKER_CREDS   = "docker-hub-creds" 
-
-        // --- DEPLOYMENT CONFIG ---
         EC2_USER      = "ubuntu" 
         EC2_HOST      = "13.53.45.35"
         SSH_CRED_ID    = "ec2-ssh-key"
