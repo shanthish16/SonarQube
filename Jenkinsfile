@@ -107,35 +107,31 @@ pipeline {
         // ================= PUSH TO ECR =================
         stage('Push Docker Image to ECR') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-ecr-creds'
-                ]]) {
+                script {
 
-                    script {
+                    def ecrUri = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
 
-                        def ecrUri = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}"
+                    sh """
+                        echo "Verifying IAM Role Access..."
+                        aws sts get-caller-identity
 
-                        sh """
-                            echo "Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                        echo "Logging into ECR..."
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-                            echo "Tagging Docker Image..."
-                            docker tag ${PROJECT_KEY}:latest ${ecrUri}:latest
-                            docker tag ${PROJECT_KEY}:latest ${ecrUri}:${BUILD_NUMBER}
+                        echo "Tagging Docker Image..."
+                        docker tag ${PROJECT_KEY}:latest ${ecrUri}:latest
+                        docker tag ${PROJECT_KEY}:latest ${ecrUri}:${BUILD_NUMBER}
 
-                            echo "Pushing Docker Images..."
-                            docker push ${ecrUri}:latest
-                            docker push ${ecrUri}:${BUILD_NUMBER}
-                        """
-                    }
+                        echo "Pushing Docker Images..."
+                        docker push ${ecrUri}:latest
+                        docker push ${ecrUri}:${BUILD_NUMBER}
+                    """
                 }
             }
         }
     }
 
-    // ================= POST =================
     post {
         success {
             echo "✅ Full CI/CD Pipeline Completed Successfully!"
