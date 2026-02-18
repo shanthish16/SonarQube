@@ -65,7 +65,7 @@ pipeline {
         stage('Upload Artifact to Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                        credentialsId: 'nexus-creds-v3',
+                        credentialsId: 'nexus-creds-16',
                         usernameVariable: 'NEXUS_USER',
                         passwordVariable: 'NEXUS_PASS'
                 )]) {
@@ -86,7 +86,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 withCredentials([usernamePassword(
-                        credentialsId: 'nexus-creds-v3',
+                        credentialsId: 'nexus-creds-16',
                         usernameVariable: 'USER',
                         passwordVariable: 'PASS'
                 )]) {
