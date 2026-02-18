@@ -25,7 +25,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/pratheekshaprakash0299-bit/sonarqube.git'
+                    url: 'https://github.com/shanthish16/SonarQube.git'
             }
         }
 
