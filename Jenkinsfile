@@ -20,9 +20,12 @@ pipeline {
     stages {
 
         // ================= CHECKOUT =================
-        stage('Checkout') {
+        stages {
+
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/pratheekshaprakash0299-bit/sonarqube.git'
             }
         }
 
