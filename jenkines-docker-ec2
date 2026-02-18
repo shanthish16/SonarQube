@@ -14,15 +14,13 @@ pipeline {
         APP_NAME       = "my-java-app"
     }
 
-    stages {
-        // Stage 1: Checkout code from GitHub
-        stage('Checkout') {
+     stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/shanthish16/SonarQube.git'
             }
         }
 
-        // Stage 2: Docker Build using your custom filename 'Docker-1'
         stage('Docker Build & Push') {
             steps {
                 script {
