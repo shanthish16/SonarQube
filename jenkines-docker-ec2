@@ -7,29 +7,25 @@ pipeline {
         IMAGE_TAG     = "${env.BUILD_NUMBER}"
         DOCKER_CREDS   = "docker-hub-creds" 
 
-        // --- DEPLOYMENT CONFIG (Your Jenkins Server) ---
+        // --- DEPLOYMENT CONFIG ---
         EC2_USER      = "ubuntu" 
         EC2_HOST      = "13.53.45.35"
         SSH_CRED_ID    = "ec2-ssh-key"
         APP_NAME       = "my-java-app"
     }
 
-     stage('Checkout Code') {
+    stages {
+        stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/shanthish16/SonarQube.git'
+                checkout scm
             }
         }
 
         stage('Docker Build & Push') {
             steps {
                 script {
-                    // Logs in to Docker Hub using your stored credentials
                     docker.withRegistry('', DOCKER_CREDS) {
-                        // The '-f Docker-1 .' tells Jenkins to use your specific file name
                         def myApp = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", "-f Docker-1 .")
-                        
-                        // Uploads the image to your Docker Hub repository
                         myApp.push()
                         myApp.push("latest") 
                     }
@@ -37,21 +33,14 @@ pipeline {
             }
         }
 
-        // Stage 3: Deploy on EC2
         stage('Deploy on EC2') {
             steps {
                 sshagent([SSH_CRED_ID]) {
                     sh """
-                        # Connect to the server via SSH
                         ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} "
-                            # Pull the newest version of the image
                             docker pull ${IMAGE_NAME}:latest
-                            
-                            # Stop and remove the old container if it is already running
                             docker stop ${APP_NAME} || true
                             docker rm ${APP_NAME} || true
-                            
-                            # Run the new container on port 8081
                             docker run -d --name ${APP_NAME} -p 8081:8080 ${IMAGE_NAME}:latest
                         "
                     """
@@ -65,7 +54,7 @@ pipeline {
             echo "Successfully deployed to http://${EC2_HOST}:8081"
         }
         failure {
-            echo "Deployment failed. Please check the Docker-1 file or Jenkins logs."
+            echo "Pipeline failed. Check logs for bracket or credential errors."
         }
     }
-}
+} // This is the final bracket that closes the 'pipeline' block
