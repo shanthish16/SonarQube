@@ -1,0 +1,17 @@
+# Step 1: Use Maven to build the application
+FROM maven:3.8.4-openjdk-17 AS build
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Step 2: Use a lightweight Java runtime to run the app
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+# This copies the finished .jar file from the 'build' stage
+COPY --from=build /app/target/*.jar app.jar
+
+# The port your application listens on
+EXPOSE 8080
+
+# The command to start your app
+ENTRYPOINT ["java", "-jar", "app.jar"]
